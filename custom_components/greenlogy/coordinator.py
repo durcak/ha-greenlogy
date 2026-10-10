@@ -102,6 +102,7 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
         self.api = api
         self._points: dict[str, DeliveryPoint] | None = None
         self._battery_id: str | None = None
+        self._imported = False
 
     async def _async_update_data(self) -> GreenlogyData:
         try:
@@ -113,6 +114,7 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
 
     async def _fetch(self) -> GreenlogyData:
         data = GreenlogyData()
+        self._imported = False
         await self._fetch_virtual_battery(data)
 
         today = dt_util.start_of_local_day()
@@ -147,6 +149,9 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
                 lambda start, end: self.api.virtual_battery_metering(battery_id, "usable_production", start, end),
                 chunk_days=10,  # 15-minútové hodnoty, aby sa zmestili do jednej strany
             )
+            if self._imported:
+                # Import beží v rade recordera – počkáme, aby súčty nižšie zahŕňali nové hodiny.
+                await get_instance(self.hass).async_block_till_done()
             await self._usable_since(data)
         return data
 
@@ -318,5 +323,6 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
 
         if stats:
             async_add_external_statistics(self.hass, self._metadata(key), stats)
+            self._imported = True
             _LOGGER.debug("%s: importovaných %s hodín do %s", statistic_id, len(stats), next_hour)
         return next_hour if (stats or last.get(statistic_id)) else None
