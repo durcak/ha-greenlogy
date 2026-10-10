@@ -7,6 +7,9 @@ Načíta stav **virtuálnej batérie (Green VBattery)** a **hodinové merania z 
 > ⚠️ Greenlogy nemá verejné API. Integrácia používa rovnaké rozhranie ako ich webový portál, ktoré sa môže
 > kedykoľvek zmeniť. Nie je to oficiálny produkt Greenlogy.
 
+> 🧪 **Beta (0.1.0)** – integrácia sa práve testuje. Ak niečo nefunguje, založte prosím
+> [issue](https://github.com/durcak/ha-greenlogy/issues) aj s logom (bez hesla).
+
 ## Čo dostanete
 
 | Senzor | Popis |
