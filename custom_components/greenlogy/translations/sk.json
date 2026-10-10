@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Greenlogy",
+        "description": "Prihlasovacie údaje do zákazníckeho portálu portal.greenlogy.com.",
+        "data": {
+          "email": "E-mail",
+          "password": "Heslo"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Greenlogy – nové heslo",
+        "description": "Heslo pre účet {email} už neplatí. Zadaj aktuálne heslo.",
+        "data": {
+          "password": "Heslo"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Nesprávny e-mail alebo heslo.",
+      "cannot_connect": "Portál Greenlogy je nedostupný, skús to neskôr.",
+      "unknown": "Neočakávaná chyba, podrobnosti sú v logu."
+    },
+    "abort": {
+      "already_configured": "Tento účet Greenlogy je už pridaný.",
+      "reauth_successful": "Heslo bolo aktualizované."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "virtual_battery": { "name": "Virtuálna batéria" },
+      "virtual_battery_consumed": { "name": "Odobraté z virtuálnej batérie" },
+      "virtual_battery_produced": { "name": "Uložené do virtuálnej batérie" },
+      "import_yesterday": { "name": "Odber zo siete včera" },
+      "export_yesterday": { "name": "Dodávka do siete včera" },
+      "metering_until": { "name": "Merania k dispozícii do" },
+      "price_high": { "name": "Cena elektriny VT" },
+      "price_low": { "name": "Cena elektriny NT" }
+    }
+  }
+}

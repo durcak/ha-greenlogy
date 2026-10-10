@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Greenlogy",
+        "description": "Login credentials for the customer portal portal.greenlogy.com.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Greenlogy – new password",
+        "description": "The password for {email} is no longer valid. Enter the current password.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password.",
+      "cannot_connect": "The Greenlogy portal is unavailable, try again later.",
+      "unknown": "Unexpected error, see the log for details."
+    },
+    "abort": {
+      "already_configured": "This Greenlogy account is already configured.",
+      "reauth_successful": "The password was updated."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "virtual_battery": { "name": "Virtual battery" },
+      "virtual_battery_consumed": { "name": "Virtual battery consumed" },
+      "virtual_battery_produced": { "name": "Virtual battery stored" },
+      "import_yesterday": { "name": "Grid import yesterday" },
+      "export_yesterday": { "name": "Grid export yesterday" },
+      "metering_until": { "name": "Metering available until" },
+      "price_high": { "name": "Energy price high tariff" },
+      "price_low": { "name": "Energy price low tariff" }
+    }
+  }
+}
