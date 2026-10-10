@@ -29,14 +29,33 @@
   },
   "entity": {
     "sensor": {
-      "virtual_battery": { "name": "Virtuálna batéria" },
-      "virtual_battery_consumed": { "name": "Odobraté z virtuálnej batérie" },
-      "virtual_battery_produced": { "name": "Uložené do virtuálnej batérie" },
-      "import_yesterday": { "name": "Odber zo siete včera" },
-      "export_yesterday": { "name": "Dodávka do siete včera" },
-      "metering_until": { "name": "Merania k dispozícii do" },
-      "price_high": { "name": "Cena elektriny VT" },
-      "price_low": { "name": "Cena elektriny NT" }
+      "virtual_battery": {
+        "name": "Stav virtuálnej batérie"
+      },
+      "virtual_battery_produced": {
+        "name": "Vyrobené do VB od zúčtovania"
+      },
+      "virtual_battery_consumed": {
+        "name": "Spotrebované z VB od zúčtovania"
+      },
+      "virtual_battery_carried_over": {
+        "name": "Prenesené z minulého zúčtovania"
+      },
+      "import_yesterday": {
+        "name": "Odber zo siete včera"
+      },
+      "export_yesterday": {
+        "name": "Dodávka do siete včera"
+      },
+      "metering_until": {
+        "name": "Merania k dispozícii do"
+      },
+      "price_high": {
+        "name": "Cena elektriny VT"
+      },
+      "price_low": {
+        "name": "Cena elektriny NT"
+      }
     }
   }
 }

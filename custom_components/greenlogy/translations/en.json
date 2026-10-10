@@ -29,14 +29,33 @@
   },
   "entity": {
     "sensor": {
-      "virtual_battery": { "name": "Virtual battery" },
-      "virtual_battery_consumed": { "name": "Virtual battery consumed" },
-      "virtual_battery_produced": { "name": "Virtual battery stored" },
-      "import_yesterday": { "name": "Grid import yesterday" },
-      "export_yesterday": { "name": "Grid export yesterday" },
-      "metering_until": { "name": "Metering available until" },
-      "price_high": { "name": "Energy price high tariff" },
-      "price_low": { "name": "Energy price low tariff" }
+      "virtual_battery": {
+        "name": "Virtual battery state"
+      },
+      "virtual_battery_produced": {
+        "name": "Produced since settlement"
+      },
+      "virtual_battery_consumed": {
+        "name": "Consumed since settlement"
+      },
+      "virtual_battery_carried_over": {
+        "name": "Carried over from last settlement"
+      },
+      "import_yesterday": {
+        "name": "Grid import yesterday"
+      },
+      "export_yesterday": {
+        "name": "Grid export yesterday"
+      },
+      "metering_until": {
+        "name": "Metering available until"
+      },
+      "price_high": {
+        "name": "Energy price high tariff"
+      },
+      "price_low": {
+        "name": "Energy price low tariff"
+      }
     }
   }
 }

@@ -67,6 +67,15 @@ SENSORS: tuple[GreenlogySensorDescription, ...] = (
         attrs_fn=_period,
     ),
     GreenlogySensorDescription(
+        key="virtual_battery_carried_over",
+        translation_key="virtual_battery_carried_over",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        suggested_display_precision=0,
+        value_fn=lambda d: d.battery_carried_over,
+        attrs_fn=_period,
+    ),
+    GreenlogySensorDescription(
         key="import_yesterday",
         translation_key="import_yesterday",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,

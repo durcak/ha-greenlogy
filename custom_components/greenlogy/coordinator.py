@@ -57,6 +57,7 @@ class GreenlogyData:
     battery: float | None = None
     battery_consumed: float | None = None
     battery_produced: float | None = None
+    battery_carried_over: float | None = None
     period_start: date | None = None
     product: str | None = None
     contract: str | None = None
@@ -138,6 +139,9 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
         since = dt_util.start_of_local_day(period_start) + timedelta(days=1) - timedelta(milliseconds=1)
         data.battery_consumed = await self.api.virtual_battery_flow(service["id"], "consumption", since)
         data.battery_produced = await self.api.virtual_battery_flow(service["id"], "production", since)
+        if None not in (data.battery, data.battery_consumed, data.battery_produced):
+            # stav = prenesené z minulého zúčtovania + vyrobené − spotrebované od zúčtovania
+            data.battery_carried_over = round(data.battery - data.battery_produced + data.battery_consumed, 3)
 
     @staticmethod
     def _period_start(effective_from: Any) -> date | None:
