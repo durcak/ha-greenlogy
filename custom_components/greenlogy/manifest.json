@@ -1,12 +1,13 @@
 {
   "domain": "greenlogy",
   "name": "Greenlogy",
-  "codeowners": [],
+  "codeowners": ["@durcak"],
   "config_flow": true,
   "dependencies": ["recorder"],
-  "documentation": "https://portal.greenlogy.com",
+  "documentation": "https://github.com/durcak/ha-greenlogy",
   "integration_type": "service",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/durcak/ha-greenlogy/issues",
   "requirements": [],
   "version": "0.1.0"
 }
