@@ -25,6 +25,7 @@ zo zákazníckeho portálu [portal.greenlogy.com](https://portal.greenlogy.com) 
 - ⚡ **Hodinové merania odberu a dodávky** z elektromera distribútora v dlhodobých štatistikách HA –
   vrátane celej histórie od začiatku zmluvy
 - 📊 Použiteľné na **Energy dashboarde** a v kartách *Štatistika* / *Graf štatistík*
+- 🚫 Koľko dodávky sa **nepripísalo do virtuálnej batérie** kvôli záporným cenám na burze
 - 💶 Ceny silovej elektriny (VT/NT) zo zmluvy
 - 🔐 Nastavenie cez UI – stačí e-mail a heslo do zákazníckeho portálu
 
@@ -61,6 +62,8 @@ miesto. Dáta sa obnovujú každé 3 hodiny. Ak heslo zmeníte, Home Assistant v
 | Vyrobené do VB od zúčtovania | energia pripísaná do batérie od posledného ročného zúčtovania |
 | Spotrebované z VB od zúčtovania | energia odobratá z batérie od posledného ročného zúčtovania |
 | Prenesené z minulého zúčtovania | zostatok, ktorý zostal z predchádzajúceho obdobia |
+| Využiteľná výroba od zúčtovania | dodávka, ktorá sa reálne pripísala do virtuálnej batérie |
+| Nepripísané do VB od zúčtovania | dodávka, ktorá sa nepripísala – od 1. 7. 2026 Greenlogy nezapočítava dodávku v 15-min. intervaloch so zápornou cenou na burze |
 | Odber zo siete včera | podľa elektromera distribútora |
 | Dodávka do siete včera | podľa elektromera distribútora |
 | Merania k dispozícii do | do kedy sú hodinové merania naimportované (diagnostika) |
@@ -82,6 +85,7 @@ Integrácia importuje hodinové merania do dlhodobých štatistík:
 |---|---|
 | `greenlogy:grid_import` | odber zo siete |
 | `greenlogy:grid_export` | dodávka do siete |
+| `greenlogy:usable_production` | dodávka pripísaná do virtuálnej batérie (využiteľná výroba) |
 
 Pri prvom spustení sa stiahne celá dostupná história, potom sa dopĺňajú nové dni. Distribútor zverejňuje merania
 s oneskorením zvyčajne 1–2 dni – štatistiky sú preto ideálne na **mesačné prehľady a porovnanie s faktúrou**.
@@ -101,7 +105,12 @@ entities:
     name: Odber zo siete
   - entity: greenlogy:grid_export
     name: Dodávka do siete
+  - entity: greenlogy:usable_production
+    name: Pripísané do VB
 ```
+
+Rozdiel medzi *Dodávka do siete* a *Pripísané do VB* ukazuje, koľko energie sa kvôli záporným cenám
+nezapočítalo do virtuálnej batérie.
 
 Na Energy dashboarde ich vyberiete v **Nastavenia → Dashboardy → Energia → Elektrická sieť**.
 

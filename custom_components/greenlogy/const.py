@@ -16,3 +16,4 @@ HISTORY_START = "2024-11-01"
 
 STAT_IMPORT = "grid_import"
 STAT_EXPORT = "grid_export"
+STAT_USABLE = "usable_production"

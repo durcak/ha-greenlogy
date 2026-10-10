@@ -41,6 +41,12 @@
       "virtual_battery_carried_over": {
         "name": "Carried over from last settlement"
       },
+      "usable_since": {
+        "name": "Usable production since settlement"
+      },
+      "not_credited_since": {
+        "name": "Not credited since settlement"
+      },
       "import_yesterday": {
         "name": "Grid import yesterday"
       },

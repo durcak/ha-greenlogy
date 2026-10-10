@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 import logging
@@ -9,7 +10,12 @@ from typing import Any
 
 from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
-from homeassistant.components.recorder.statistics import async_add_external_statistics, get_last_statistics
+from homeassistant.components.recorder.statistics import (
+    async_add_external_statistics,
+    get_last_statistics,
+    statistic_during_period,
+    statistics_during_period,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant
@@ -18,7 +24,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .api import GreenlogyApi, GreenlogyAuthError, GreenlogyError
-from .const import DOMAIN, HISTORY_START, STAT_EXPORT, STAT_IMPORT, UPDATE_INTERVAL
+from .const import DOMAIN, HISTORY_START, STAT_EXPORT, STAT_IMPORT, STAT_USABLE, UPDATE_INTERVAL
 
 try:  # HA 2025.4+
     from homeassistant.components.recorder.models import StatisticMeanType
@@ -38,7 +44,10 @@ _SETTLED_AFTER = timedelta(days=7)
 STAT_NAMES = {
     STAT_IMPORT: "Greenlogy odber zo siete",
     STAT_EXPORT: "Greenlogy dodávka do siete",
+    STAT_USABLE: "Greenlogy výroba pripísaná do VB",
 }
+
+type RowFetcher = Callable[[datetime, datetime], Awaitable[list[dict[str, Any]]]]
 
 
 @dataclass
@@ -58,6 +67,9 @@ class GreenlogyData:
     battery_consumed: float | None = None
     battery_produced: float | None = None
     battery_carried_over: float | None = None
+    usable_since: float | None = None
+    not_credited_since: float | None = None
+    usable_from: date | None = None
     period_start: date | None = None
     product: str | None = None
     contract: str | None = None
@@ -89,6 +101,7 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
         super().__init__(hass, _LOGGER, config_entry=entry, name=DOMAIN, update_interval=UPDATE_INTERVAL)
         self.api = api
         self._points: dict[str, DeliveryPoint] | None = None
+        self._battery_id: str | None = None
 
     async def _async_update_data(self) -> GreenlogyData:
         try:
@@ -104,17 +117,37 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
 
         today = dt_util.start_of_local_day()
         yesterday = today - timedelta(days=1)
-        for key, point in (await self._delivery_points()).items():
-            rows = [r for r in await self.api.metering(point.id, yesterday, today - timedelta(milliseconds=1), "1d") if not r.get("placeholder")]
+        points = await self._delivery_points()
+        for key, point in points.items():
+            rows = [
+                r
+                for r in await self.api.metering(point.id, yesterday, today - timedelta(milliseconds=1), "1d")
+                if not r.get("placeholder")
+            ]
             if rows:
                 value = round(sum(_float(r.get("_value")) or 0.0 for r in rows), 3)
                 if key == STAT_IMPORT:
                     data.import_yesterday = value
                 else:
                     data.export_yesterday = value
-            until = await self._import_statistics(key, point)
+            until = await self._import_statistics(
+                key,
+                point.history_start,
+                lambda start, end, point=point: self.api.metering(point.id, start, end, "1h"),
+                chunk_days=31,
+            )
             if until and (data.metering_until is None or until > data.metering_until):
                 data.metering_until = until
+
+        if self._battery_id and STAT_EXPORT in points:
+            battery_id = self._battery_id
+            await self._import_statistics(
+                STAT_USABLE,
+                points[STAT_EXPORT].history_start,
+                lambda start, end: self.api.virtual_battery_metering(battery_id, "usable_production", start, end),
+                chunk_days=10,  # 15-minútové hodnoty, aby sa zmestili do jednej strany
+            )
+            await self._usable_since(data)
         return data
 
     async def _fetch_virtual_battery(self, data: GreenlogyData) -> None:
@@ -122,6 +155,7 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
         if not services:
             return
         service = services[0]
+        self._battery_id = service["id"]
         detail = await self.api.virtual_battery(service["id"])
         accumulated = (detail.get("virtualBattery") or {}).get("accumulatedProduction") or {}
         data.battery = _float(accumulated.get("value"))
@@ -142,6 +176,37 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
         if None not in (data.battery, data.battery_consumed, data.battery_produced):
             # stav = prenesené z minulého zúčtovania + vyrobené − spotrebované od zúčtovania
             data.battery_carried_over = round(data.battery - data.battery_produced + data.battery_consumed, 3)
+
+    async def _usable_since(self, data: GreenlogyData) -> None:
+        """Využiteľná a nepripísaná výroba od zúčtovania zo štatistík (oneskorenie max. jeden cyklus)."""
+        if data.period_start is None:
+            return
+        start = dt_util.as_utc(dt_util.start_of_local_day(data.period_start))
+        recorder = get_instance(self.hass)
+        usable_id = f"{DOMAIN}:{STAT_USABLE}"
+        # Využiteľná výroba nemusí existovať za celé obdobie – porovnávame len od jej prvého dňa.
+        days = await recorder.async_add_executor_job(
+            statistics_during_period, self.hass, start, None, {usable_id}, "day", None, {"change"}
+        )
+        if not days.get(usable_id):
+            return
+        first = days[usable_id][0]["start"]
+        first = dt_util.utc_from_timestamp(first) if isinstance(first, (int, float)) else dt_util.as_utc(first)
+        start = max(start, first)
+        data.usable_from = dt_util.as_local(start).date()
+        usable = await recorder.async_add_executor_job(
+            statistic_during_period, self.hass, start, None, usable_id, {"change"}, None
+        )
+        export = await recorder.async_add_executor_job(
+            statistic_during_period, self.hass, start, None, f"{DOMAIN}:{STAT_EXPORT}", {"change"}, None
+        )
+        usable_change = _float((usable or {}).get("change"))
+        export_change = _float((export or {}).get("change"))
+        if usable_change is None:
+            return
+        data.usable_since = round(usable_change, 3)
+        if export_change is not None:
+            data.not_credited_since = round(max(export_change - usable_change, 0.0), 3)
 
     @staticmethod
     def _period_start(effective_from: Any) -> date | None:
@@ -205,8 +270,13 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
             meta["unit_class"] = EnergyConverter.UNIT_CLASS
         return StatisticMetaData(**meta)
 
-    async def _import_statistics(self, key: str, point: DeliveryPoint) -> datetime | None:
-        """Doplní hodinové merania od posledného importu po koniec včerajška."""
+    async def _import_statistics(
+        self, key: str, history_start: datetime, fetch: RowFetcher, *, chunk_days: int
+    ) -> datetime | None:
+        """Doplní hodinové hodnoty od posledného importu po koniec včerajška.
+
+        Jemnejšie hodnoty (napr. 15-minútové) sa sčítajú po hodinách.
+        """
         statistic_id = f"{DOMAIN}:{key}"
         last = await get_instance(self.hass).async_add_executor_job(
             get_last_statistics, self.hass, 1, statistic_id, True, {"sum"}
@@ -218,7 +288,7 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
             next_hour = last_start + timedelta(hours=1)
             running = float(row.get("sum") or 0.0)
         else:
-            next_hour = point.history_start
+            next_hour = history_start.replace(minute=0, second=0, microsecond=0)
             running = 0.0
 
         end = dt_util.as_utc(dt_util.start_of_local_day())
@@ -226,22 +296,23 @@ class GreenlogyCoordinator(DataUpdateCoordinator[GreenlogyData]):
         stats: list[StatisticData] = []
         chunk = next_hour
         while chunk < end:
-            chunk_end = min(chunk + timedelta(days=31), end)
-            rows = await self.api.metering(point.id, chunk, chunk_end - timedelta(milliseconds=1), "1h")
-            real = sorted(
-                (t, _float(r.get("_value")) or 0.0)
-                for r in rows
-                if not r.get("placeholder")
-                and (t := _parse_utc(r.get("_time"))) is not None
-                and next_hour <= t < end
-            )
-            for start, value in real:
-                running += value
-                stats.append(StatisticData(start=start, state=running, sum=running))
-                next_hour = start + timedelta(hours=1)
-            if not real and chunk_end > settled:
+            chunk_end = min(chunk + timedelta(days=chunk_days), end)
+            hours: dict[datetime, float] = {}
+            for r in await fetch(chunk, chunk_end - timedelta(milliseconds=1)):
+                if r.get("placeholder"):
+                    continue
+                t = _parse_utc(r.get("_time"))
+                if t is None or not next_hour <= t < end:
+                    continue
+                hour = t.replace(minute=0, second=0, microsecond=0)
+                hours[hour] = hours.get(hour, 0.0) + (_float(r.get("_value")) or 0.0)
+            for hour in sorted(hours):
+                running += hours[hour]
+                stats.append(StatisticData(start=hour, state=running, sum=running))
+                next_hour = hour + timedelta(hours=1)
+            if not hours and chunk_end > settled:
                 break  # novšie dáta ešte nie sú k dispozícii
-            if real and next_hour < chunk_end and chunk_end > settled:
+            if hours and next_hour < chunk_end and chunk_end > settled:
                 break  # zvyšok obdobia ešte nie je nameraný, skúsime nabudúce
             chunk = chunk_end
 

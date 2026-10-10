@@ -41,6 +41,12 @@
       "virtual_battery_carried_over": {
         "name": "Prenesené z minulého zúčtovania"
       },
+      "usable_since": {
+        "name": "Využiteľná výroba od zúčtovania"
+      },
+      "not_credited_since": {
+        "name": "Nepripísané do VB od zúčtovania"
+      },
       "import_yesterday": {
         "name": "Odber zo siete včera"
       },

@@ -125,27 +125,31 @@ class GreenlogyApi:
         data = await self._get("/physical_delivery_points", {"seller": "false"})
         return data if isinstance(data, list) else []
 
-    async def metering(
-        self, delivery_point_id: str, start: datetime, end: datetime, resolution: str = "1h"
-    ) -> list[dict[str, Any]]:
-        """Namerané hodnoty z elektromera (resolution: 15m, 1h, 1d)."""
+    async def _paged(self, path: str, params: dict[str, str]) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         for page in range(_MAX_PAGES):
-            data = await self._get(
-                f"/physical_delivery_points/{delivery_point_id}/metering",
-                {
-                    "offset": str(page * _PAGE_LIMIT),
-                    "limit": str(_PAGE_LIMIT),
-                    "unit": "kWh",
-                    "from": iso_utc(start),
-                    "to": iso_utc(end),
-                    "resolution": resolution,
-                    "timeTo": "true",
-                },
-            )
+            data = await self._get(path, {**params, "offset": str(page * _PAGE_LIMIT), "limit": str(_PAGE_LIMIT)})
             if not isinstance(data, list):
                 break
             rows.extend(data)
             if len(data) < _PAGE_LIMIT:
                 break
         return rows
+
+    async def metering(
+        self, delivery_point_id: str, start: datetime, end: datetime, resolution: str = "1h"
+    ) -> list[dict[str, Any]]:
+        """Namerané hodnoty z elektromera (resolution: 15m, 1h, 1d)."""
+        return await self._paged(
+            f"/physical_delivery_points/{delivery_point_id}/metering",
+            {"unit": "kWh", "from": iso_utc(start), "to": iso_utc(end), "resolution": resolution, "timeTo": "true"},
+        )
+
+    async def virtual_battery_metering(
+        self, service_id: str, kind: str, start: datetime, end: datetime
+    ) -> list[dict[str, Any]]:
+        """Časové rady virtuálnej batérie, napr. usable_production (vždy po 15 minútach)."""
+        return await self._paged(
+            f"/customer_services/virtual_battery/{service_id}/metering/{kind}",
+            {"from": iso_utc(start), "to": iso_utc(end), "resolution": "15m", "timeTo": "true"},
+        )
